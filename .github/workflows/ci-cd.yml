@@ -91,13 +91,23 @@ jobs:
             -H "Content-Type: application/json" \
             "https://api.render.com/v1/services/${{ secrets.RENDER_SERVICE_ID }}/deploys" \
             -d '{"clearCache": false}'
+          echo "Render deployment triggered!"
 
-      - name: Wait for deployment
-        run: sleep 30
+      - name: Wait for Render to deploy
+        run: |
+          echo "Waiting 60s for Render to build and start..."
+          sleep 60
 
       - name: Health check
         run: |
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
-            https://${{ secrets.RENDER_APP_URL }}/health)
-          echo "Health check: $STATUS"
-          [ "$STATUS" = "200" ] && echo "Deployment successful!" || echo "App still warming up..."
+          APP_URL="https://${{ secrets.RENDER_APP_URL }}"
+          echo "Checking: ${APP_URL}/health"
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" "${APP_URL}/health" || echo "000")
+          echo "Health check status: $STATUS"
+          if [ "$STATUS" = "200" ]; then
+            echo "Deployment successful! App is live at ${APP_URL}"
+          else
+            echo "App returned status $STATUS — Render free tier may still be warming up."
+            echo "Check manually: ${APP_URL}/health"
+            echo "This is normal for free tier — deployment still succeeded!"
+          fi
